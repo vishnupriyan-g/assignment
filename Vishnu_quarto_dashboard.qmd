@@ -1,0 +1,110 @@
+---
+title: "Global Fertility rates and GDP relationship"
+format: html
+editor: visual
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+## Average fertility rates by continent  
+
+Fertility rates has been much better in the western nations due to high GDP and healthcare.
+
+```{r}
+install.packages("tidyverse")
+library(tidyverse)
+install.packages("maps")
+library(maps)
+
+#creating objects based on the csv files
+unicef_metadata <- read_csv("/cloud/project/unicef_metadata_posit.csv")
+unicef_indicator_2 <- read_csv("/cloud/project/unicef_indicator_2_posit.csv")
+data_right_3 <- read_csv("/cloud/project/data_right_3.csv")
+indicator_data3 <- merge(unicef_indicator_2,data_right_3, by = "country")
+overall_sheet <- merge(indicator_data3,unicef_metadata,  by.x = c("country","time_period"), by.y = c("country","year"))
+
+#creating average fertility value of each continent
+average_by_continent <- indicator_data3 %>%
+  group_by(continent) %>%
+  summarise(avg_obs_value = mean(obs_value, na.rm = TRUE))
+
+
+#plotting average fertility of each continent in a bar graph
+average_by_continent %>%
+  ggplot(aes(x = continent, y = avg_obs_value)) +
+  geom_bar(stat = "identity", fill = "#187832") +
+  labs(title = "Fertility rate Average by continent",
+       x = "Continent",
+       y = "Fertility Rate") +
+  guides(fill = FALSE) + 
+  geom_text(aes(label = round(avg_obs_value,2)), vjust = -0.5, color = "black", size = 3.5) +
+  theme_minimal()
+
+```
+
+
+## Africa's fertility rates over the years
+
+The minimum and maximum fertility rates of each African country across the timeline.
+
+```{r}
+# time series for fertility rate
+
+continent_africa_fertility <- overall_sheet %>%
+  filter(continent == "Africa")
+  
+  ggplot(data = continent_africa_fertility, aes(x = time_period, y = obs_value, group = country, color = country)) +
+    geom_line() +
+    xlab("Year") +
+    ylab("Observation Value") +
+    theme_minimal() + 
+    guides(color = FALSE)
+    
+
+
+```
+
+
+## Relationship between GDP and Fertility rate
+
+Focusing further on Africa, the most populous country, Nigeria's fertilty rate has improved with rise in GDP.
+
+```{r}
+#scatter plot for fertility rate
+  nigeria_data <- continent_africa_fertility %>%
+    filter(country == "Nigeria") 
+  
+  nigeria_data %>%
+    ggplot(aes(x = `GDP per capita (constant 2015 US$)`, y = obs_value, color = obs_value) )+
+    geom_point(alpha=2.0) +
+    scale_color_gradient(low = "#98e2eb", high = "#ed8582", name = "obs_value") +
+    labs(x = "GDP per capta",
+         y = "fertility Rate") +
+    theme_minimal() + 
+    theme(legend.position = "hide")
+```
+
+
+## Fertility rate: a global view
+
+In the global population growth reached a peak in 1963 with an annual growth rate of 2.2%; but since then, world population growth has halved. So, this year is a crucial year to review. 
+
+```{r}
+ # mapping the world map of fertility rate
+  world_map <- map_data("world")
+  
+ fertility_data_1963 <- overall_sheet  %>%
+    filter(time_period == 1963) %>%
+    merge(world_map, by.x = c("country"), by.y = c("region"), all.x = TRUE)
+  
+  
+ 
+  ggplot() +
+    geom_polygon(data = fertility_data_1963, aes(x = long, y = lat, group = group, fill = obs_value)) +
+    scale_fill_gradient(low = "#e80c0c", high = "#37c43e", name = "obs_value", limits = c(0, 10), breaks = seq(0, 10, by = 1)) +
+    theme_minimal() +
+    theme(legend.position = "hide")
+  
+```
